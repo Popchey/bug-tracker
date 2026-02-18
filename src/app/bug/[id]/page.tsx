@@ -32,14 +32,23 @@ export default function BugDetail() {
 
   const updateStatus = async (newStatus: Bug["status"]) => {
     setUpdating(true);
-    const res = await fetch(`/api/bugs/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: newStatus }),
-    });
-    const updated = await res.json();
-    setBug(updated);
-    setUpdating(false);
+    try {
+      const res = await fetch(`/api/bugs/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (!res.ok) {
+        console.error("Failed to update bug status", res.status, res.statusText);
+        return;
+      }
+      const updated: Bug = await res.json();
+      setBug(updated);
+    } catch (error) {
+      console.error("Error while updating bug status", error);
+    } finally {
+      setUpdating(false);
+    }
   };
 
   const deleteBug = async () => {
