@@ -18,9 +18,12 @@ interface Bug {
   createdAt: string;
 }
 
+type FilterStatus = "all" | "open" | "in-progress" | "closed";
+
 export default function Home() {
   const [bugs, setBugs] = useState<Bug[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<FilterStatus>("all");
 
   const fetchBugs = async () => {
     const response = await fetch("/api/bugs");
@@ -59,12 +62,22 @@ export default function Home() {
     }
   };
 
+  const filteredBugs =
+    filter === "all" ? bugs : bugs.filter((b) => b.status === filter);
+
+  const filterOptions: { label: string; value: FilterStatus }[] = [
+    { label: "All", value: "all" },
+    { label: "Open", value: "open" },
+    { label: "In Progress", value: "in-progress" },
+    { label: "Closed", value: "closed" },
+  ];
+
   if (loading) return <div className="p-8 text-center">Loading...</div>;
 
   return (
     <main className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-4xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-gray-900">Bug Tracker</h1>
           <a
             href="/new"
@@ -74,13 +87,32 @@ export default function Home() {
           </a>
         </div>
 
-        {bugs.length === 0 ? (
+        <div className="flex gap-2 mb-6">
+          {filterOptions.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setFilter(opt.value)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors
+                  ${
+                    filter === opt.value
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
+                  }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
+        {filteredBugs.length === 0 ? (
           <p className="text-gray-500 text-center py-12">
-            No bugs reported yet. Click &quot;Report Bug&quot; to create one.
+            {filter === "all"
+              ? `No bugs reported yet. Click "Report Bug" to create one.`
+              : `No ${filter} bugs found.`}
           </p>
         ) : (
           <div className="space-y-4">
-            {bugs.map((bug) => (
+            {filteredBugs.map((bug) => (
               <a key={bug._id} href={`/bug/${bug._id}`} className="block">
                 <div className="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow">
                   <div className="flex items-center justify-between mb-2">

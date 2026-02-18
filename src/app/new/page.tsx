@@ -50,7 +50,7 @@ export default function NewBug() {
               required
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
               placeholder="Brief description of the bug"
             />
           </div>
@@ -66,7 +66,7 @@ export default function NewBug() {
               onChange={(e) =>
                 setForm({ ...form, description: e.target.value })
               }
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
               placeholder="Steps to reproduce, expected vs actual behavior..."
             />
           </div>
@@ -78,7 +78,8 @@ export default function NewBug() {
             <select
               value={form.priority}
               onChange={(e) => setForm({ ...form, priority: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+
             >
               <option value="low">Low</option>
               <option value="medium">Medium</option>
