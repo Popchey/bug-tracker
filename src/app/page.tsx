@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 interface Bug {
   _id: string;
@@ -49,12 +49,21 @@ export default function Home() {
     }
   };
 
+  const statusCounts = useMemo(() =>
+    bugs.reduce((acc, b) => {
+      acc[b.status] = (acc[b.status] ?? 0) + 1;
+      return acc;
+    }, {} as Record<string, number>),
+  [bugs]);
+
   const countByStatus = (status: FilterStatus) =>
-    status === "all" ? bugs.length : bugs.filter((b) => b.status === status).length;
+    status === "all" ? bugs.length : (statusCounts[status] ?? 0);
+
+  const normalizedSearch = search.trim().toLowerCase();
 
   const filteredBugs = bugs
     .filter((b) => filter === "all" || b.status === filter)
-    .filter((b) => b.title.toLowerCase().includes(search.toLowerCase()));
+    .filter((b) => !normalizedSearch || b.title.toLowerCase().includes(normalizedSearch));
 
   const filterOptions: { label: string; value: FilterStatus }[] = [
     { label: "All", value: "all" },
@@ -108,11 +117,11 @@ export default function Home() {
 
         {filteredBugs.length === 0 ? (
           <p className="text-gray-500 text-center py-12">
-            {search
-              ? `No bugs matching "${search}".`
+            {normalizedSearch
+              ? `No bugs matching "${search.trim()}".`
               : filter === "all"
               ? `No bugs reported yet. Click "Report Bug" to create one.`
-              : `No ${filter} bugs found.`}
+              : `No ${filterOptions.find((o) => o.value === filter)?.label} bugs found.`}
           </p>
         ) : (
           <div className="space-y-4">
