@@ -10,6 +10,7 @@ export interface IBug extends Document {
     description: string;
     status: "open" | "in-progress" | "closed";
     priority: "low" | "medium" | "high";
+    dueDate?: Date;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -26,8 +27,9 @@ const BugSchema = new Schema<IBug>({
         type: String,
         enum: ["low", "medium", "high"],
         default: "medium",
-        },
-    }, 
+    },
+    dueDate: { type: Date, required: false },
+    },
     { timestamps: true }    
 );
 

@@ -1,12 +1,6 @@
 /* eslint-disable @next/next/no-html-link-for-pages */
 "use client";
 
-//   What this does:
-//   - A form with title, description, and priority fields
-//   - On submit, it sends a POST request to your /api/bugs endpoint
-//   - Then redirects you back to the homepage where you'll see the new bug
-//   - The Cancel button takes you back without submitting
-
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -16,6 +10,7 @@ export default function NewBug() {
     title: "",
     description: "",
     priority: "medium",
+    dueDate: "",
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -23,68 +18,72 @@ export default function NewBug() {
     e.preventDefault();
     setSubmitting(true);
 
+    const payload = { ...form, dueDate: form.dueDate || undefined };
     await fetch("/api/bugs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify(payload),
     });
 
     router.push("/");
   };
 
   return (
-    <main className="min-h-screen bg-gray-50 p-8">
+    <main className="min-h-screen bg-gray-50 dark:bg-gray-950 p-8">
       <div className="max-w-2xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Report a Bug</h1>
+        <a href="/" className="text-blue-600 dark:text-blue-400 hover:underline text-sm mb-6 block">
+          ← Back to all bugs
+        </a>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">Report a Bug</h1>
 
-        <form
-          onSubmit={handleSubmit}
-          className="bg-white rounded-lg shadow p-6 space-y-6"
-        >
+        <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-900 rounded-lg shadow p-6 space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Title
-            </label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Title</label>
             <input
               type="text"
               required
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+              className="w-full border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white bg-white dark:bg-gray-800"
               placeholder="Brief description of the bug"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Description
-            </label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Description</label>
             <textarea
               required
               rows={4}
               value={form.description}
-              onChange={(e) =>
-                setForm({ ...form, description: e.target.value })
-              }
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              className="w-full border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white bg-white dark:bg-gray-800"
               placeholder="Steps to reproduce, expected vs actual behavior..."
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Priority
-            </label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Priority</label>
             <select
               value={form.priority}
               onChange={(e) => setForm({ ...form, priority: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-
+              className="w-full border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white bg-white dark:bg-gray-800"
             >
               <option value="low">Low</option>
               <option value="medium">Medium</option>
               <option value="high">High</option>
             </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Due Date <span className="text-gray-400 font-normal">(optional)</span>
+            </label>
+            <input
+              type="date"
+              value={form.dueDate}
+              onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
+              className="w-full border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white bg-white dark:bg-gray-800"
+            />
           </div>
 
           <div className="flex gap-4">
@@ -97,7 +96,7 @@ export default function NewBug() {
             </button>
             <a
               href="/"
-              className="px-6 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+              className="px-6 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
             >
               Cancel
             </a>
