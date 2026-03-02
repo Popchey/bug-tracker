@@ -62,8 +62,7 @@ export default function Home() {
     }
   };
 
-  const filteredBugs =
-    filter === "all" ? bugs : bugs.filter((b) => b.status === filter);
+  const filteredBugs = filter === "all" ? bugs : bugs.filter((b) => b.status === filter);
 
   const filterOptions: { label: string; value: FilterStatus }[] = [
     { label: "All", value: "all" },
