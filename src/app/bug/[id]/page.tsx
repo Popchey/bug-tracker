@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-html-link-for-pages */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Toast from "@/components/Toast";
 
@@ -25,6 +25,13 @@ export default function BugDetail() {
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({ title: "", description: "", priority: "", dueDate: "" });
   const [toast, setToast] = useState<string | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     fetch(`/api/bugs/${id}`)
@@ -52,8 +59,9 @@ export default function BugDetail() {
   }, [editing]);
 
   const showToast = (message: string) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setToast(message);
-    setTimeout(() => setToast(null), 3000);
+    toastTimerRef.current = setTimeout(() => setToast(null), 3000);
   };
 
   const updateStatus = async (newStatus: Bug["status"]) => {
@@ -126,7 +134,20 @@ export default function BugDetail() {
     }
   };
 
-  const isOverdue = bug && bug.dueDate && bug.status !== "closed" && new Date(bug.dueDate) < new Date();
+  const getDateOnly = (dateStr: string): Date | null => {
+    const parts = dateStr.split("-");
+    if (parts.length !== 3) return null;
+    const [y, m, d] = parts.map(Number);
+    if (!y || !m || !d) return null;
+    return new Date(y, m - 1, d);
+  };
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const isOverdue = !!bug && !!bug.dueDate && bug.status !== "closed" && (() => {
+    const due = getDateOnly(bug.dueDate!);
+    return due ? due < today : false;
+  })();
 
   if (loading) return <div className="p-8 text-center dark:text-gray-400">Loading...</div>;
   if (!bug) return <div className="p-8 text-center dark:text-gray-400">Bug not found.</div>;

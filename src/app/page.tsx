@@ -16,7 +16,7 @@ type FilterStatus = "all" | "open" | "in-progress" | "closed";
 type FilterPriority = "all" | "low" | "medium" | "high";
 type SortOption = "newest" | "oldest" | "priority-high" | "priority-low";
 
-const PRIORITY_ORDER: Record<string, number> = { high: 3, medium: 2, low: 1 };
+const PRIORITY_ORDER: Record<Bug["priority"], number> = { high: 3, medium: 2, low: 1 };
 
 export default function Home() {
   const [bugs, setBugs] = useState<Bug[]>([]);
@@ -83,8 +83,16 @@ export default function Home() {
       });
   }, [bugs, statusFilter, priorityFilter, search, sort]);
 
-  const isOverdue = (bug: Bug) =>
-    !!bug.dueDate && bug.status !== "closed" && new Date(bug.dueDate) < new Date();
+  const isOverdue = (bug: Bug): boolean => {
+    if (!bug.dueDate || bug.status === "closed") return false;
+    const parts = bug.dueDate.split("-");
+    if (parts.length !== 3) return false;
+    const [y, m, d] = parts.map(Number);
+    const due = new Date(y, m - 1, d);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return due < today;
+  };
 
   const statusFilterOptions: { label: string; value: FilterStatus }[] = [
     { label: "All", value: "all" },
