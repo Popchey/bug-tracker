@@ -11,7 +11,7 @@ import Bug from "@/models/Bug";
 export async function GET() {
     await dbConnect();
 
-    const bugs = await Bug.find({}).sort({ createdAt: -1 });
+    const bugs = await Bug.find({}).sort({ createdAt: -1 }).lean();
 
     return NextResponse.json(bugs);
 }

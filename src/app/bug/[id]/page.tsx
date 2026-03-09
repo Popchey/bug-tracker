@@ -5,6 +5,12 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Toast from "@/components/Toast";
 
+interface Comment {
+  _id: string;
+  text: string;
+  createdAt: string;
+}
+
 interface Bug {
   _id: string;
   title: string;
@@ -12,6 +18,8 @@ interface Bug {
   status: "open" | "in-progress" | "closed";
   priority: "low" | "medium" | "high";
   dueDate?: string;
+  tags: string[];
+  comments: Comment[];
   createdAt: string;
   updatedAt: string;
 }
@@ -24,6 +32,10 @@ export default function BugDetail() {
   const [updating, setUpdating] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({ title: "", description: "", priority: "", dueDate: "" });
+  const [editTags, setEditTags] = useState<string[]>([]);
+  const [editTagInput, setEditTagInput] = useState("");
+  const [commentText, setCommentText] = useState("");
+  const [submittingComment, setSubmittingComment] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -44,6 +56,7 @@ export default function BugDetail() {
           priority: data.priority,
           dueDate: data.dueDate ? new Date(data.dueDate).toISOString().split("T")[0] : "",
         });
+        setEditTags(data.tags ?? []);
         setLoading(false);
       });
   }, [id]);
@@ -89,7 +102,7 @@ export default function BugDetail() {
   const saveEdit = async () => {
     setUpdating(true);
     try {
-      const payload = { ...editForm, dueDate: editForm.dueDate || null };
+      const payload = { ...editForm, tags: editTags, dueDate: editForm.dueDate || null };
       const res = await fetch(`/api/bugs/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -107,6 +120,38 @@ export default function BugDetail() {
       console.error("Error while updating bug", error);
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const addEditTag = () => {
+    const t = editTagInput.trim().toLowerCase();
+    if (t && !editTags.includes(t)) setEditTags([...editTags, t]);
+    setEditTagInput("");
+  };
+
+  const removeEditTag = (tag: string) => setEditTags(editTags.filter((t) => t !== tag));
+
+  const submitComment = async () => {
+    if (!commentText.trim()) return;
+    setSubmittingComment(true);
+    try {
+      const res = await fetch(`/api/bugs/${id}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: commentText.trim() }),
+      });
+      if (!res.ok) {
+        console.error("Failed to add comment", res.status, res.statusText);
+        return;
+      }
+      const updated: Bug = await res.json();
+      setBug(updated);
+      setCommentText("");
+      showToast("Comment added!");
+    } catch (error) {
+      console.error("Error adding comment", error);
+    } finally {
+      setSubmittingComment(false);
     }
   };
 
@@ -159,7 +204,7 @@ export default function BugDetail() {
           ← Back to all bugs
         </a>
 
-        <div className="bg-white dark:bg-gray-900 rounded-lg shadow p-6">
+        <div className="bg-white dark:bg-gray-900 rounded-lg shadow p-6 mb-6">
           {editing ? (
             <div className="space-y-4 mb-6">
               <div>
@@ -203,6 +248,36 @@ export default function BugDetail() {
                   className="w-full border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white bg-white dark:bg-gray-800"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tags</label>
+                <div className="flex gap-2 mb-2">
+                  <input
+                    type="text"
+                    value={editTagInput}
+                    onChange={(e) => setEditTagInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addEditTag(); } }}
+                    className="flex-1 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white bg-white dark:bg-gray-800"
+                    placeholder="Add a tag..."
+                  />
+                  <button
+                    type="button"
+                    onClick={addEditTag}
+                    className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-sm font-medium"
+                  >
+                    Add
+                  </button>
+                </div>
+                {editTags.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {editTags.map((tag) => (
+                      <span key={tag} className="flex items-center gap-1 px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs rounded-full">
+                        {tag}
+                        <button type="button" onClick={() => removeEditTag(tag)} className="hover:text-indigo-900 dark:hover:text-indigo-100">×</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
               <div className="flex gap-3">
                 <button
                   onClick={saveEdit}
@@ -219,6 +294,7 @@ export default function BugDetail() {
                       priority: bug.priority,
                       dueDate: bug.dueDate ? new Date(bug.dueDate).toISOString().split("T")[0] : "",
                     });
+                    setEditTags(bug.tags ?? []);
                     setEditing(false);
                   }}
                   className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
@@ -229,16 +305,26 @@ export default function BugDetail() {
             </div>
           ) : (
             <>
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-2">
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{bug.title}</h1>
                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(bug.status)}`}>
                   {bug.status}
                 </span>
               </div>
 
-              <p className="text-gray-600 dark:text-gray-400 mb-6">{bug.description}</p>
+              {(bug.tags ?? []).length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {bug.tags.map((tag) => (
+                    <span key={tag} className="px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs rounded-full font-medium">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
 
-              <div className="flex items-center gap-3 mb-6 text-sm text-gray-500 dark:text-gray-400 flex-wrap">
+              <p className="text-gray-600 dark:text-gray-400 mb-4">{bug.description}</p>
+
+              <div className="flex items-center gap-3 mb-4 text-sm text-gray-500 dark:text-gray-400 flex-wrap">
                 <span className={`w-3 h-3 rounded-full ${getPriorityColor(bug.priority)}`}></span>
                 <span>{bug.priority} priority</span>
                 <span>·</span>
@@ -290,6 +376,43 @@ export default function BugDetail() {
                 Delete this bug
               </button>
             </div>
+          </div>
+        </div>
+
+        {/* Comments section */}
+        <div className="bg-white dark:bg-gray-900 rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            Notes {(bug.comments ?? []).length > 0 && <span className="text-sm font-normal text-gray-500 dark:text-gray-400">({bug.comments.length})</span>}
+          </h2>
+
+          {(bug.comments ?? []).length > 0 && (
+            <div className="space-y-4 mb-6">
+              {bug.comments.map((comment) => (
+                <div key={comment._id} className="border-l-2 border-indigo-300 dark:border-indigo-700 pl-4">
+                  <p className="text-gray-700 dark:text-gray-300 text-sm">{comment.text}</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                    {new Date(comment.createdAt).toLocaleString()}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="space-y-3">
+            <textarea
+              rows={3}
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+              placeholder="Add a note..."
+              className="w-full border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white bg-white dark:bg-gray-800 text-sm"
+            />
+            <button
+              onClick={submitComment}
+              disabled={submittingComment || !commentText.trim()}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
+            >
+              {submittingComment ? "Adding..." : "Add Note"}
+            </button>
           </div>
         </div>
       </div>

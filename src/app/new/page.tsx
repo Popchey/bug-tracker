@@ -12,13 +12,30 @@ export default function NewBug() {
     priority: "medium",
     dueDate: "",
   });
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  const addTag = () => {
+    const t = tagInput.trim().toLowerCase();
+    if (t && !tags.includes(t)) setTags([...tags, t]);
+    setTagInput("");
+  };
+
+  const removeTag = (tag: string) => setTags(tags.filter((t) => t !== tag));
+
+  const handleTagKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addTag();
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
 
-    const payload = { ...form, dueDate: form.dueDate || undefined };
+    const payload = { ...form, tags, dueDate: form.dueDate || undefined };
     await fetch("/api/bugs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -84,6 +101,39 @@ export default function NewBug() {
               onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
               className="w-full border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white bg-white dark:bg-gray-800"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Tags <span className="text-gray-400 font-normal">(optional)</span>
+            </label>
+            <div className="flex gap-2 mb-2">
+              <input
+                type="text"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={handleTagKeyDown}
+                className="flex-1 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white bg-white dark:bg-gray-800"
+                placeholder="e.g. frontend, auth, ui"
+              />
+              <button
+                type="button"
+                onClick={addTag}
+                className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-sm font-medium"
+              >
+                Add
+              </button>
+            </div>
+            {tags.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {tags.map((tag) => (
+                  <span key={tag} className="flex items-center gap-1 px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs rounded-full">
+                    {tag}
+                    <button type="button" onClick={() => removeTag(tag)} className="hover:text-indigo-900 dark:hover:text-indigo-100">×</button>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="flex gap-4">
