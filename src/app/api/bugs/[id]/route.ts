@@ -18,7 +18,7 @@ export async function GET(
 
     const { id } = await params;
 
-    const bug = await Bug.findById(id);
+    const bug = await Bug.findById(id).lean();
 
     if (!bug) {
         return NextResponse.json({ error: "Bug not found" }, { status: 404 });
@@ -37,18 +37,21 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
 
-    const bug = await Bug.findByIdAndUpdate(id, body, { new: true });
+    const { title, description, status, priority, dueDate, tags } = body;
+    const update = { title, description, status, priority, dueDate, tags };
+
+    const bug = await Bug.findByIdAndUpdate(id, update, { new: true, runValidators: true }).lean();
 
     if (!bug) {
         return NextResponse.json({ error: "Bug not found" }, { status: 404 });
     }
-    
+
     return NextResponse.json(bug);
 }
 
 //DELETE a bug
 export async function DELETE(
-    request: NextRequest,
+    _request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
     await dbConnect();

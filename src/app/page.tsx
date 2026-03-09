@@ -9,6 +9,7 @@ interface Bug {
   status: "open" | "in-progress" | "closed";
   priority: "low" | "medium" | "high";
   dueDate?: string;
+  tags: string[];
   createdAt: string;
 }
 
@@ -23,6 +24,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<FilterStatus>("all");
   const [priorityFilter, setPriorityFilter] = useState<FilterPriority>("all");
+  const [tagFilter, setTagFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortOption>("newest");
 
@@ -65,6 +67,10 @@ export default function Home() {
   const countByStatus = (status: FilterStatus) =>
     status === "all" ? bugs.length : (statusCounts[status] ?? 0);
 
+  const allTags = useMemo(() =>
+    Array.from(new Set(bugs.flatMap((b) => b.tags ?? []))).sort(),
+  [bugs]);
+
   const normalizedSearch = search.trim().toLowerCase();
 
   const filteredBugs = useMemo(() => {
@@ -72,6 +78,7 @@ export default function Home() {
     return bugs
       .filter((b) => statusFilter === "all" || b.status === statusFilter)
       .filter((b) => priorityFilter === "all" || b.priority === priorityFilter)
+      .filter((b) => tagFilter === "all" || (b.tags ?? []).includes(tagFilter))
       .filter((b) => !q || b.title.toLowerCase().includes(q))
       .sort((a, b) => {
         switch (sort) {
@@ -81,7 +88,7 @@ export default function Home() {
           default: return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         }
       });
-  }, [bugs, statusFilter, priorityFilter, search, sort]);
+  }, [bugs, statusFilter, priorityFilter, tagFilter, search, sort]);
 
   const isOverdue = (bug: Bug): boolean => {
     if (!bug.dueDate || bug.status === "closed") return false;
@@ -177,8 +184,8 @@ export default function Home() {
           ))}
         </div>
 
-        {/* Priority filter */}
-        <div className="flex gap-2 mb-6">
+        {/* Priority filter + Tag filter */}
+        <div className="flex flex-wrap items-center gap-2 mb-6">
           {priorityFilterOptions.map((opt) => (
             <button
               key={opt.value}
@@ -192,13 +199,26 @@ export default function Home() {
               {opt.label}
             </button>
           ))}
+
+          <span className="text-gray-300 dark:text-gray-700 text-xs">|</span>
+          <select
+            value={tagFilter}
+            onChange={(e) => setTagFilter(e.target.value)}
+            disabled={allTags.length === 0}
+            className="border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <option value="all">{allTags.length === 0 ? "No tags yet" : "All Tags"}</option>
+            {allTags.map((tag) => (
+              <option key={tag} value={tag}>{tag}</option>
+            ))}
+          </select>
         </div>
 
         {filteredBugs.length === 0 ? (
           <p className="text-gray-500 dark:text-gray-400 text-center py-12">
             {normalizedSearch
               ? `No bugs matching "${search.trim()}".`
-              : statusFilter === "all" && priorityFilter === "all"
+              : statusFilter === "all" && priorityFilter === "all" && tagFilter === "all"
               ? `No bugs reported yet. Click "Report Bug" to create one.`
               : `No bugs match the current filters.`}
           </p>
@@ -213,6 +233,15 @@ export default function Home() {
                       {bug.status}
                     </span>
                   </div>
+                  {(bug.tags ?? []).length > 0 && (
+                    <div className="flex gap-1 flex-wrap mb-2">
+                      {bug.tags.map((tag) => (
+                        <span key={tag} className="px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs rounded-full font-medium">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   <p className="text-gray-600 dark:text-gray-400 mb-3">{bug.description}</p>
                   <div className="flex items-center gap-3 flex-wrap">
                     <span className={`w-3 h-3 rounded-full ${getPriorityColor(bug.priority)}`}></span>
