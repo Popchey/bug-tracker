@@ -129,7 +129,7 @@ export default function NewBug() {
                 {tags.map((tag) => (
                   <span key={tag} className="flex items-center gap-1 px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs rounded-full">
                     {tag}
-                    <button type="button" onClick={() => removeTag(tag)} className="hover:text-indigo-900 dark:hover:text-indigo-100">×</button>
+                    <button type="button" onClick={() => removeTag(tag)} aria-label={`Remove tag ${tag}`} title={`Remove tag ${tag}`} className="hover:text-indigo-900 dark:hover:text-indigo-100">×</button>
                   </span>
                 ))}
               </div>

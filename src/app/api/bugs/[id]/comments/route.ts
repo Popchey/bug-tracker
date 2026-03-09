@@ -18,7 +18,7 @@ export async function POST(
     const bug = await Bug.findByIdAndUpdate(
         id,
         { $push: { comments: { text: text.trim(), createdAt: new Date() } } },
-        { new: true }
+        { new: true, runValidators: true }
     ).lean();
 
     if (!bug) {

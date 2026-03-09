@@ -11,8 +11,8 @@ export interface IBug extends Document {
     status: "open" | "in-progress" | "closed";
     priority: "low" | "medium" | "high";
     dueDate?: Date;
-    tags: string[];
-    comments: IComment[];
+    tags?: string[];
+    comments?: IComment[];
     createdAt: Date;
     updatedAt: Date;
 }
@@ -36,7 +36,7 @@ const BugSchema = new Schema<IBug>({
         default: "medium",
     },
     dueDate: { type: Date, required: false },
-    tags: [{ type: String }],
+    tags: [{ type: String, trim: true, lowercase: true }],
     comments: [CommentSchema],
 },
     { timestamps: true }

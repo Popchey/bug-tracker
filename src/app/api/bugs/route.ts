@@ -23,5 +23,5 @@ export async function POST(request: NextRequest) {
 
     const bug = await Bug.create(body);
 
-    return NextResponse.json(bug, { status: 201 });
+    return NextResponse.json(bug.toObject(), { status: 201 });
 }

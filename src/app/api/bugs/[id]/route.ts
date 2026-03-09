@@ -37,7 +37,10 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
 
-    const bug = await Bug.findByIdAndUpdate(id, body, { new: true }).lean();
+    const { title, description, status, priority, dueDate, tags } = body;
+    const update = { title, description, status, priority, dueDate, tags };
+
+    const bug = await Bug.findByIdAndUpdate(id, update, { new: true, runValidators: true }).lean();
 
     if (!bug) {
         return NextResponse.json({ error: "Bug not found" }, { status: 404 });

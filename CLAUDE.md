@@ -79,7 +79,7 @@ src/
 | DELETE | /api/bugs/[id]               | Delete bug                |
 | POST   | /api/bugs/[id]/comments      | Add a comment to a bug    |
 
-All routes use `.lean()` on Mongoose queries for clean JSON serialization and better performance.
+Read and update routes use `.lean()` for plain JS object serialization. `POST /api/bugs` uses `.toObject()` on the created document instead, and `DELETE` returns a message string with no document serialization needed.
 
 ---
 
@@ -179,7 +179,7 @@ const getDateOnly = (dateStr: string) => {
 
 ## Coding Conventions
 
-- All API responses use `.lean()` for plain JS objects
+- Read/update API responses use `.lean()`; POST create uses `.toObject()`
 - Date inputs stored as `Date` in MongoDB, formatted as `YYYY-MM-DD` in forms
 - Tags are always stored lowercase
 - Dark mode classes follow `bg-white dark:bg-gray-900` pattern throughout
