@@ -71,3 +71,7 @@ html.dark .line {
   from { transform: rotate(12deg) translateX(20vw); }
   to   { transform: rotate(12deg) translateX(-40vw); }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .line { animation: none; }
+}
