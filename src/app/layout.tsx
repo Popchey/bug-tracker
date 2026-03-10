@@ -33,7 +33,18 @@ export default function RootLayout({
         />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-8 py-3">
+        <div aria-hidden="true" className="bg-lines">
+          <div className="line line-1" />
+          <div className="line line-2" />
+          <div className="line line-3" />
+          <div className="line line-4" />
+          <div className="line line-5" />
+          <div className="line line-6" />
+          <div className="line line-7" />
+          <div className="line line-8" />
+          <div className="line line-9" />
+        </div>
+        <header className="bg-white/70 dark:bg-gray-900/70 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-800/50 px-8 py-3 sticky top-0 z-10">
           <div className="max-w-4xl mx-auto flex justify-end">
             <ThemeToggle />
           </div>
