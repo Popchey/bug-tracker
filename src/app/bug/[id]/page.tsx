@@ -198,7 +198,7 @@ export default function BugDetail() {
   if (!bug) return <div className="p-8 text-center dark:text-gray-400">Bug not found.</div>;
 
   return (
-    <main className="min-h-screen bg-gray-50 dark:bg-gray-950 p-8">
+    <main className="min-h-screen bg-transparent p-8">
       <div className="max-w-2xl mx-auto">
         <a href="/" className="text-blue-600 dark:text-blue-400 hover:underline text-sm mb-6 block">
           ← Back to all bugs

@@ -118,7 +118,7 @@ export default function Home() {
   if (loading) return <div className="p-8 text-center dark:text-gray-400">Loading...</div>;
 
   return (
-    <main className="min-h-screen bg-gray-50 dark:bg-gray-950 p-8">
+    <main className="min-h-screen bg-transparent p-8">
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Bug Tracker</h1>
