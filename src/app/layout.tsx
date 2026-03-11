@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { getServerSession } from "next-auth/next";
 import "./globals.css";
 import ThemeToggle from "@/components/ThemeToggle";
+import Providers from "@/components/Providers";
+import ShaderBackground from "@/components/ShaderBackground";
+import SignOutButton from "@/components/SignOutButton";
+import { authOptions } from "@/lib/auth";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -18,11 +23,13 @@ export const metadata: Metadata = {
   description: "A simple bug tracking application built with Next.js",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await getServerSession(authOptions);
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -33,23 +40,21 @@ export default function RootLayout({
         />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <div aria-hidden="true" className="bg-lines">
-          <div className="line line-1" />
-          <div className="line line-2" />
-          <div className="line line-3" />
-          <div className="line line-4" />
-          <div className="line line-5" />
-          <div className="line line-6" />
-          <div className="line line-7" />
-          <div className="line line-8" />
-          <div className="line line-9" />
-        </div>
-        <header className="bg-white/70 dark:bg-gray-900/70 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-800/50 px-8 py-3 sticky top-0 z-10">
-          <div className="max-w-4xl mx-auto flex justify-end">
-            <ThemeToggle />
-          </div>
-        </header>
-        {children}
+        <Providers>
+          <ShaderBackground />
+          <header className="bg-white/10 dark:bg-gray-900/30 backdrop-blur-md border-b border-white/20 dark:border-gray-800/50 px-8 py-3 sticky top-0 z-10">
+            <div className="max-w-4xl mx-auto flex justify-between items-center">
+              {session?.user?.email && (
+                <span className="text-sm text-gray-600 dark:text-gray-400">{session.user.email}</span>
+              )}
+              <div className="flex items-center gap-4 ml-auto">
+                {session && <SignOutButton />}
+                <ThemeToggle />
+              </div>
+            </div>
+          </header>
+          {children}
+        </Providers>
       </body>
     </html>
   );
