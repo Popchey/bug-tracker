@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
 import dbConnect from "./mongodb";
 import User from "@/models/User";
+import { rateLimit } from "./rateLimit";
 
 export const authOptions: NextAuthOptions = {
     providers: [
@@ -15,6 +16,8 @@ export const authOptions: NextAuthOptions = {
             },
             async authorize(credentials) {
                 if (!credentials?.email || !credentials?.password) return null;
+
+                if (!rateLimit(`login:${credentials.email}`, 10, 15 * 60 * 1000)) return null;
 
                 await dbConnect();
                 const user = await User.findOne({ email: credentials.email.toLowerCase() }).lean() as {
@@ -34,6 +37,16 @@ export const authOptions: NextAuthOptions = {
     session: { strategy: "jwt" },
     pages: {
         signIn: "/login",
+    },
+    callbacks: {
+        jwt: async ({ token, user }) => {
+            if (user?.id) token.id = user.id;
+            return token;
+        },
+        session: async ({ session, token }) => {
+            if (token.id) session.user.id = token.id;
+            return session;
+        },
     },
     secret: process.env.NEXTAUTH_SECRET,
 };
