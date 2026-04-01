@@ -383,7 +383,7 @@ export default function BugDetail() {
               )}
               <button
                 onClick={deleteBug}
-                className="text-red-600 dark:text-red-400 text-sm hover:underline"
+                className="px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/60 transition-colors"
               >
                 Delete this bug
               </button>
@@ -409,7 +409,7 @@ export default function BugDetail() {
                     <button
                       onClick={() => deleteComment(comment._id)}
                       aria-label="Delete note"
-                      className="text-xs text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                      className="px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/60 transition-colors"
                     >
                       Delete
                     </button>

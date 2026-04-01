@@ -44,6 +44,8 @@ const BugSchema = new Schema<IBug>({
     { timestamps: true }
 );
 
+BugSchema.index({ userId: 1, createdAt: -1 });
+
 // In development, always re-register the model so schema changes from hot reloads take effect.
 // mongoose.models caches the old schema otherwise, causing new fields (like tags) to be silently dropped.
 if (process.env.NODE_ENV !== "production" && mongoose.models.Bug) {

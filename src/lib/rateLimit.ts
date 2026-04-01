@@ -8,6 +8,12 @@ const store = new Map<string, { count: number; resetAt: number }>();
  */
 export function rateLimit(key: string, limit: number, windowMs: number): boolean {
     const now = Date.now();
+
+    // Prune expired entries to prevent unbounded memory growth
+    for (const [k, v] of store) {
+        if (v.resetAt < now) store.delete(k);
+    }
+
     const entry = store.get(key);
 
     if (!entry || entry.resetAt < now) {

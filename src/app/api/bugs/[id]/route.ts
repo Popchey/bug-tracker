@@ -20,7 +20,7 @@ export async function GET(
 
     await dbConnect();
     const { id } = await params;
-    const bug = await Bug.findById(id).lean();
+    const bug = await Bug.findOne({ _id: id, userId: session.user.id }).lean();
 
     if (!bug) {
         return NextResponse.json({ error: "Bug not found" }, { status: 404 });
@@ -54,6 +54,9 @@ export async function PUT(
     const update = { title, description, status, priority, dueDate, tags };
 
     const bug = await Bug.findByIdAndUpdate(id, update, { new: true, runValidators: true }).lean();
+    if (!bug) {
+        return NextResponse.json({ error: "Bug not found" }, { status: 404 });
+    }
     return NextResponse.json(bug);
 }
 

@@ -16,6 +16,14 @@ export async function DELETE(
     await dbConnect();
     const { id, commentId } = await params;
 
+    const existing = await Bug.findById(id).lean() as { userId?: string } | null;
+    if (!existing) {
+        return NextResponse.json({ error: "Bug not found" }, { status: 404 });
+    }
+    if (existing.userId && existing.userId !== session.user.id) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const bug = await Bug.findByIdAndUpdate(
         id,
         { $pull: { comments: { _id: commentId } } },

@@ -17,10 +17,11 @@ export const authOptions: NextAuthOptions = {
             async authorize(credentials) {
                 if (!credentials?.email || !credentials?.password) return null;
 
-                if (!rateLimit(`login:${credentials.email}`, 10, 15 * 60 * 1000)) return null;
+                const normalizedEmail = credentials.email.trim().toLowerCase();
+                if (!rateLimit(`login:${normalizedEmail}`, 10, 15 * 60 * 1000)) return null;
 
                 await dbConnect();
-                const user = await User.findOne({ email: credentials.email.toLowerCase() }).lean() as {
+                const user = await User.findOne({ email: normalizedEmail }).lean() as {
                     _id: mongoose.Types.ObjectId;
                     email: string;
                     password: string;
