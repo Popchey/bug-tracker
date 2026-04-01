@@ -1,6 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+
+const BUGS_PER_PAGE = 10;
 
 interface Bug {
   _id: string;
@@ -20,6 +23,8 @@ type SortOption = "newest" | "oldest" | "priority-high" | "priority-low";
 const PRIORITY_ORDER: Record<Bug["priority"], number> = { high: 3, medium: 2, low: 1 };
 
 export default function Home() {
+  const router = useRouter();
+  const searchRef = useRef<HTMLInputElement>(null);
   const [bugs, setBugs] = useState<Bug[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<FilterStatus>("all");
@@ -27,17 +32,34 @@ export default function Home() {
   const [tagFilter, setTagFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortOption>("newest");
+  const [page, setPage] = useState(1);
 
   const fetchBugs = async () => {
     const response = await fetch("/api/bugs");
     const data = await response.json();
-    setBugs(data);
+    setBugs(Array.isArray(data) ? data : []);
     setLoading(false);
   };
 
   useEffect(() => {
     fetchBugs();
   }, []);
+
+  // Reset to page 1 whenever filters change
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter, priorityFilter, tagFilter, search, sort]);
+
+  // Keyboard shortcuts: n = new bug, / = focus search
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === "n") { e.preventDefault(); router.push("/new"); }
+      if (e.key === "/") { e.preventDefault(); searchRef.current?.focus(); }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [router]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -64,6 +86,12 @@ export default function Home() {
     }, {} as Record<string, number>),
   [bugs]);
 
+  // Tab title: show open bug count
+  useEffect(() => {
+    const n = statusCounts["open"] ?? 0;
+    document.title = n > 0 ? `Bug Tracker (${n} open)` : "Bug Tracker";
+  }, [statusCounts]);
+
   const countByStatus = (status: FilterStatus) =>
     status === "all" ? bugs.length : (statusCounts[status] ?? 0);
 
@@ -89,6 +117,9 @@ export default function Home() {
         }
       });
   }, [bugs, statusFilter, priorityFilter, tagFilter, search, sort]);
+
+  const totalPages = Math.ceil(filteredBugs.length / BUGS_PER_PAGE);
+  const paginatedBugs = filteredBugs.slice((page - 1) * BUGS_PER_PAGE, page * BUGS_PER_PAGE);
 
   const isOverdue = (bug: Bug): boolean => {
     if (!bug.dueDate || bug.status === "closed") return false;
@@ -144,13 +175,19 @@ export default function Home() {
 
         {/* Search + Sort */}
         <div className="flex gap-3 mb-4">
-          <input
-            type="text"
-            placeholder="Search bugs..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="flex-1 border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white bg-white dark:bg-gray-900"
-          />
+          <div className="flex-1 relative">
+            <input
+              ref={searchRef}
+              type="text"
+              placeholder="Search bugs..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full border border-gray-300 dark:border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white bg-white dark:bg-gray-900"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 dark:text-gray-600 pointer-events-none hidden sm:block">
+              <kbd className="font-mono">/</kbd> search · <kbd className="font-mono">n</kbd> new
+            </span>
+          </div>
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value as SortOption)}
@@ -224,7 +261,7 @@ export default function Home() {
           </p>
         ) : (
           <div className="space-y-4">
-            {filteredBugs.map((bug) => (
+            {paginatedBugs.map((bug) => (
               <a key={bug._id} href={`/bug/${bug._id}`} className="block">
                 <div className={`bg-white dark:bg-gray-900 rounded-lg shadow p-6 hover:shadow-md transition-shadow border ${isOverdue(bug) ? "border-red-300 dark:border-red-700" : "border-transparent dark:border-gray-800"}`}>
                   <div className="flex items-center justify-between mb-2">
@@ -258,6 +295,28 @@ export default function Home() {
                 </div>
               </a>
             ))}
+          </div>
+        )}
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-4 mt-6">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              ← Prev
+            </button>
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              Page {page} of {totalPages}
+            </span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Next →
+            </button>
           </div>
         )}
       </div>

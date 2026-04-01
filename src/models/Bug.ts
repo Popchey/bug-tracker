@@ -13,6 +13,7 @@ export interface IBug extends Document {
     dueDate?: Date;
     tags?: string[];
     comments?: IComment[];
+    userId?: string;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -38,9 +39,12 @@ const BugSchema = new Schema<IBug>({
     dueDate: { type: Date, required: false },
     tags: [{ type: String, trim: true, lowercase: true }],
     comments: [CommentSchema],
+    userId: { type: String },
 },
     { timestamps: true }
 );
+
+BugSchema.index({ userId: 1, createdAt: -1 });
 
 // In development, always re-register the model so schema changes from hot reloads take effect.
 // mongoose.models caches the old schema otherwise, causing new fields (like tags) to be silently dropped.

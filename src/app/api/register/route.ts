@@ -1,9 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import dbConnect from "@/lib/mongodb";
 import User from "@/models/User";
+import { rateLimit } from "@/lib/rateLimit";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+    const xff = req.headers.get("x-forwarded-for");
+    const ip = xff ? xff.split(",")[0].trim() || "local" : "local";
+    if (!rateLimit(`register:${ip}`, 5, 15 * 60 * 1000)) {
+        return NextResponse.json({ error: "Too many requests. Try again later." }, { status: 429 });
+    }
+
     let email: string | undefined;
     let password: string | undefined;
 

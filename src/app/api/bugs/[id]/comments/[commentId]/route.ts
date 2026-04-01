@@ -4,9 +4,9 @@ import { authOptions } from "@/lib/auth";
 import dbConnect from "@/lib/mongodb";
 import Bug from "@/models/Bug";
 
-export async function POST(
-    request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
+export async function DELETE(
+    _request: NextRequest,
+    { params }: { params: Promise<{ id: string; commentId: string }> }
 ) {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -14,8 +14,7 @@ export async function POST(
     }
 
     await dbConnect();
-
-    const { id } = await params;
+    const { id, commentId } = await params;
 
     const existing = await Bug.findById(id).lean() as { userId?: string } | null;
     if (!existing) {
@@ -25,22 +24,10 @@ export async function POST(
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    let text: string | undefined;
-    try {
-        const body = await request.json();
-        ({ text } = body);
-    } catch {
-        return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-    }
-
-    if (!text?.trim()) {
-        return NextResponse.json({ error: "Comment text is required" }, { status: 400 });
-    }
-
     const bug = await Bug.findByIdAndUpdate(
         id,
-        { $push: { comments: { text: text.trim(), createdAt: new Date() } } },
-        { new: true, runValidators: true }
+        { $pull: { comments: { _id: commentId } } },
+        { new: true }
     ).lean();
 
     if (!bug) {

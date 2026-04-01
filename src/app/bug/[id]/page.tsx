@@ -155,6 +155,18 @@ export default function BugDetail() {
     }
   };
 
+  const deleteComment = async (commentId: string) => {
+    try {
+      const res = await fetch(`/api/bugs/${id}/comments/${commentId}`, { method: "DELETE" });
+      if (!res.ok) return;
+      const updated: Bug = await res.json();
+      setBug(updated);
+      showToast("Note deleted.");
+    } catch (error) {
+      console.error("Error deleting comment", error);
+    }
+  };
+
   const deleteBug = async () => {
     if (!confirm("Are you sure you want to delete this bug?")) return;
     await fetch(`/api/bugs/${id}`, { method: "DELETE" });
@@ -371,7 +383,7 @@ export default function BugDetail() {
               )}
               <button
                 onClick={deleteBug}
-                className="text-red-600 dark:text-red-400 text-sm hover:underline"
+                className="px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/60 transition-colors"
               >
                 Delete this bug
               </button>
@@ -390,9 +402,18 @@ export default function BugDetail() {
               {bug.comments.map((comment) => (
                 <div key={comment._id} className="border-l-2 border-indigo-300 dark:border-indigo-700 pl-4">
                   <p className="text-gray-700 dark:text-gray-300 text-sm">{comment.text}</p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                    {new Date(comment.createdAt).toLocaleString()}
-                  </p>
+                  <div className="flex items-center justify-between mt-1">
+                    <p className="text-xs text-gray-400 dark:text-gray-500">
+                      {new Date(comment.createdAt).toLocaleString()}
+                    </p>
+                    <button
+                      onClick={() => deleteComment(comment._id)}
+                      aria-label="Delete note"
+                      className="px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/60 transition-colors"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
