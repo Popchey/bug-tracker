@@ -372,13 +372,22 @@ export default function BugDetail() {
               ))}
             </div>
 
-            <div className="flex gap-4">
+            <div className="flex gap-3 flex-wrap">
               {!editing && (
                 <button
                   onClick={() => setEditing(true)}
                   className="text-blue-600 dark:text-blue-400 text-sm hover:underline"
                 >
                   Edit bug
+                </button>
+              )}
+              {bug.status === "closed" && (
+                <button
+                  onClick={() => updateStatus("open")}
+                  disabled={updating}
+                  className="px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 hover:bg-yellow-200 dark:hover:bg-yellow-900/60 transition-colors disabled:opacity-50"
+                >
+                  Reopen bug
                 </button>
               )}
               <button
