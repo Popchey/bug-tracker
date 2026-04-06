@@ -10,19 +10,10 @@ interface ProfileMenuProps {
 
 export default function ProfileMenu({ username, email }: ProfileMenuProps) {
   const [open, setOpen] = useState(false);
-  const [avatar, setAvatar] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   const displayName = username ?? email ?? "?";
   const initial = displayName[0].toUpperCase();
-
-  // Fetch avatar from API (too large to store in JWT cookie)
-  useEffect(() => {
-    fetch("/api/profile")
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => { if (data?.avatar) setAvatar(data.avatar); })
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -40,13 +31,9 @@ export default function ProfileMenu({ username, email }: ProfileMenuProps) {
         aria-label="Profile menu"
         aria-expanded={open}
       >
-        {avatar ? (
-          <img src={avatar} alt={displayName} className="w-7 h-7 rounded-full object-cover ring-2 ring-white/20 dark:ring-gray-700" />
-        ) : (
-          <span className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold shrink-0">
-            {initial}
-          </span>
-        )}
+        <span className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold shrink-0">
+          {initial}
+        </span>
         <span className="text-sm text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white transition-colors max-w-[120px] truncate">
           {displayName}
         </span>
@@ -60,13 +47,9 @@ export default function ProfileMenu({ username, email }: ProfileMenuProps) {
         <div className="absolute left-0 mt-2 w-52 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl py-1.5 z-50">
           <div className="px-4 py-2.5 border-b border-gray-100 dark:border-gray-800">
             <div className="flex items-center gap-3">
-              {avatar ? (
-                <img src={avatar} alt={displayName} className="w-8 h-8 rounded-full object-cover shrink-0" />
-              ) : (
-                <span className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold shrink-0">
-                  {initial}
-                </span>
-              )}
+              <span className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold shrink-0">
+                {initial}
+              </span>
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{displayName}</p>
                 {username && email && (
