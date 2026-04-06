@@ -4,8 +4,8 @@ import { getServerSession } from "next-auth/next";
 import "./globals.css";
 import ThemeToggle from "@/components/ThemeToggle";
 import Providers from "@/components/Providers";
-import ShaderBackground from "@/components/ShaderBackground";
-import SignOutButton from "@/components/SignOutButton";
+import AnimatedShaderBackground from "@/components/ui/animated-shader-background";
+import ProfileMenu from "@/components/ProfileMenu";
 import { authOptions } from "@/lib/auth";
 
 const geistSans = Geist({
@@ -41,14 +41,16 @@ export default async function RootLayout({
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <Providers>
-          <ShaderBackground />
+          <AnimatedShaderBackground />
           <header className="bg-white/10 dark:bg-gray-900/30 backdrop-blur-md border-b border-white/20 dark:border-gray-800/50 px-8 py-3 sticky top-0 z-10">
             <div className="max-w-4xl mx-auto flex justify-between items-center">
-              {session?.user?.email && (
-                <span className="text-sm text-gray-600 dark:text-gray-400">{session.user.email ?? ""}</span>
+              {session && (
+                <ProfileMenu
+                  username={session.user.username}
+                  email={session.user.email}
+                />
               )}
               <div className="flex items-center gap-4 ml-auto">
-                {session && <SignOutButton />}
                 <ThemeToggle />
               </div>
             </div>

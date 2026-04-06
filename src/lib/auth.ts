@@ -25,13 +25,14 @@ export const authOptions: NextAuthOptions = {
                     _id: mongoose.Types.ObjectId;
                     email: string;
                     password: string;
+                    username?: string;
                 } | null;
                 if (!user) return null;
 
                 const passwordMatch = await bcrypt.compare(credentials.password, user.password);
                 if (!passwordMatch) return null;
 
-                return { id: user._id.toString(), email: user.email };
+                return { id: user._id.toString(), email: user.email, username: user.username ?? null };
             },
         }),
     ],
@@ -42,10 +43,12 @@ export const authOptions: NextAuthOptions = {
     callbacks: {
         jwt: async ({ token, user }) => {
             if (user?.id) token.id = user.id;
+            if (user && "username" in user) token.username = user.username ?? null;
             return token;
         },
         session: async ({ session, token }) => {
             if (token.id) session.user.id = token.id;
+            if ("username" in token) session.user.username = token.username ?? null;
             return session;
         },
     },
