@@ -14,6 +14,7 @@ export interface IBug extends Document {
     tags?: string[];
     comments?: IComment[];
     userId?: string;
+    order?: number;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -40,6 +41,7 @@ const BugSchema = new Schema<IBug>({
     tags: [{ type: String, trim: true, lowercase: true }],
     comments: [CommentSchema],
     userId: { type: String },
+    order: { type: Number, default: 0 },
 },
     { timestamps: true }
 );
