@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 
 const BUGS_PER_PAGE = 10;
 
@@ -15,15 +16,35 @@ interface Bug {
   dueDate?: string;
   tags: string[];
   createdAt: string;
+  order?: number;
 }
 
 type FilterStatus = "all" | "open" | "in-progress" | "closed";
 type FilterPriority = "all" | "low" | "medium" | "high";
-type SortOption = "newest" | "oldest" | "priority-high" | "priority-low";
+type SortOption = "newest" | "oldest" | "priority-high" | "priority-low" | "custom";
 
 const PRIORITY_ORDER: Record<Bug["priority"], number> = { high: 3, medium: 2, low: 1 };
 
-export default function Home() {
+function getDueDateBadge(bug: Bug): { label: string; className: string } | null {
+  if (!bug.dueDate || bug.status === "closed") return null;
+  const [y, m, d] = bug.dueDate.split("-").map(Number);
+  const due = new Date(y, m - 1, d);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const diffDays = Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0)
+    return { label: `Overdue ${Math.abs(diffDays)}d`, className: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" };
+  if (diffDays === 0)
+    return { label: "Due today", className: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300" };
+  if (diffDays === 1)
+    return { label: "Due tomorrow", className: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300" };
+  if (diffDays <= 7)
+    return { label: `Due in ${diffDays}d`, className: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300" };
+  return { label: `Due ${due.toLocaleDateString()}`, className: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400" };
+}
+
+export default function Home() {  
   const router = useRouter();
   const searchRef = useRef<HTMLInputElement>(null);
   const [bugs, setBugs] = useState<Bug[]>([]);
@@ -113,13 +134,18 @@ export default function Home() {
           case "oldest": return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
           case "priority-high": return PRIORITY_ORDER[b.priority] - PRIORITY_ORDER[a.priority];
           case "priority-low": return PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
+          case "custom": return (a.order ?? 0) - (b.order ?? 0);
           default: return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         }
       });
   }, [bugs, statusFilter, priorityFilter, tagFilter, search, sort]);
 
-  const totalPages = Math.ceil(filteredBugs.length / BUGS_PER_PAGE);
-  const paginatedBugs = filteredBugs.slice((page - 1) * BUGS_PER_PAGE, page * BUGS_PER_PAGE);
+  // In custom sort mode, show all (no pagination) so drag order is meaningful
+  const isCustomSort = sort === "custom";
+  const totalPages = isCustomSort ? 1 : Math.ceil(filteredBugs.length / BUGS_PER_PAGE);
+  const paginatedBugs = isCustomSort
+    ? filteredBugs
+    : filteredBugs.slice((page - 1) * BUGS_PER_PAGE, page * BUGS_PER_PAGE);
 
   const isOverdue = (bug: Bug): boolean => {
     if (!bug.dueDate || bug.status === "closed") return false;
@@ -183,6 +209,28 @@ export default function Home() {
     exitSelectionMode();
     await fetchBugs();
     setBulkProcessing(false);
+  };
+
+  const handleDragEnd = async (result: DropResult) => {
+    if (!result.destination || result.destination.index === result.source.index) return;
+
+    const reordered = Array.from(filteredBugs);
+    const [moved] = reordered.splice(result.source.index, 1);
+    reordered.splice(result.destination.index, 0, moved);
+
+    // Assign new order values and update local state optimistically
+    const updated = reordered.map((bug, i) => ({ ...bug, order: i }));
+    setBugs((prev) => {
+      const map = new Map(updated.map((b) => [b._id, b]));
+      return prev.map((b) => map.get(b._id) ?? b);
+    });
+
+    // Persist to API
+    await fetch("/api/bugs/reorder", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: updated.map((b) => b._id) }),
+    });
   };
 
   const statusFilterOptions: { label: string; value: FilterStatus }[] = [
@@ -250,6 +298,7 @@ export default function Home() {
             <option value="oldest">Oldest first</option>
             <option value="priority-high">High priority first</option>
             <option value="priority-low">Low priority first</option>
+            <option value="custom">Custom order</option>
           </select>
         </div>
 
@@ -304,16 +353,46 @@ export default function Home() {
         </div>
 
         {filteredBugs.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400 text-center py-12">
-            {normalizedSearch
-              ? `No bugs matching "${search.trim()}".`
-              : statusFilter === "all" && priorityFilter === "all" && tagFilter === "all"
-              ? `No bugs reported yet. Click "Report Bug" to create one.`
-              : `No bugs match the current filters.`}
-          </p>
+          /* ── Empty states ─────────────────────────────────────────────── */
+          bugs.length === 0 ? (
+            /* No bugs at all */
+            <div className="flex flex-col items-center justify-center py-24 text-center">
+              <div className="w-20 h-20 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center mb-6">
+                <svg className="w-10 h-10 text-blue-400 dark:text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">You&apos;re all clear!</h2>
+              <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-xs">No bugs reported yet. Start tracking your first issue.</p>
+              <a href="/new" className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium transition-colors">
+                Report your first bug
+              </a>
+            </div>
+          ) : (
+            /* Filters active but no results */
+            <div className="flex flex-col items-center justify-center py-24 text-center">
+              <div className="w-20 h-20 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center mb-6">
+                <svg className="w-10 h-10 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 15.803a7.5 7.5 0 0010.607 0z" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">No results found</h2>
+              <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-xs">
+                {normalizedSearch
+                  ? `No bugs match "${search.trim()}".`
+                  : "No bugs match the current filters."}
+              </p>
+              <button
+                onClick={() => { setSearch(""); setStatusFilter("all"); setPriorityFilter("all"); setTagFilter("all"); }}
+                className="border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 px-5 py-2.5 rounded-lg font-medium transition-colors"
+              >
+                Clear all filters
+              </button>
+            </div>
+          )
         ) : (
           <>
-            {/* Bulk action bar — appears above list when items selected */}
+            {/* Bulk action bar */}
             {selectedIds.size > 0 && (
               <div className="bg-white dark:bg-gray-900 border-2 border-blue-400 dark:border-blue-500 rounded-xl px-5 py-4 mb-4 flex flex-wrap items-center justify-between gap-3 shadow-md">
                 <div className="flex items-center gap-3">
@@ -384,80 +463,126 @@ export default function Home() {
                   Press <kbd className="font-mono">Esc</kbd> to cancel
                 </span>
               )}
+              {isCustomSort && !selectionMode && (
+                <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto flex items-center gap-1">
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 7h18M3 12h18M3 17h18" />
+                  </svg>
+                  Drag to reorder
+                </span>
+              )}
             </div>
 
-            <div className="space-y-3">
-              {paginatedBugs.map((bug) => {
-                const selected = selectedIds.has(bug._id);
-                return (
-                  <div key={bug._id} className="relative group">
-                    <a
-                      href={selectionMode ? undefined : `/bug/${bug._id}`}
-                      onClick={selectionMode ? (e) => { e.preventDefault(); toggleSelect(bug._id); } : undefined}
-                      className={`block ${selectionMode ? "cursor-pointer" : ""}`}
-                    >
-                      <div className={`bg-white dark:bg-gray-900 rounded-xl shadow p-6 transition-all
-                        ${selectionMode ? "hover:shadow-md" : "hover:shadow-md"}
-                        ${selected
-                          ? "ring-2 ring-blue-500 dark:ring-blue-400 ring-offset-1"
-                          : isOverdue(bug)
-                            ? "border border-red-300 dark:border-red-700"
-                            : "border border-transparent dark:border-gray-800"
-                        }`}>
-                        <div className="flex items-start justify-between mb-2 gap-3">
-                          <div className="flex items-center gap-3 min-w-0">
-                            {/* Selection indicator — only visible in selection mode */}
-                            {selectionMode && (
-                              <span className={`shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all
-                                ${selected
-                                  ? "bg-blue-600 border-blue-600"
-                                  : "border-gray-300 dark:border-gray-500 bg-white dark:bg-gray-800"
-                                }`}>
-                                {selected && (
-                                  <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                  </svg>
-                                )}
-                              </span>
-                            )}
-                            <h2 className="text-xl font-semibold text-gray-900 dark:text-white truncate">{bug.title}</h2>
-                          </div>
-                          <span className={`shrink-0 px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(bug.status)}`}>
-                            {bug.status}
-                          </span>
-                        </div>
-                        {(bug.tags ?? []).length > 0 && (
-                          <div className={`flex gap-1 flex-wrap mb-2 ${selectionMode ? "pl-9" : ""}`}>
-                            {bug.tags.map((tag) => (
-                              <span key={tag} className="px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs rounded-full font-medium">
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                        <p className={`text-gray-600 dark:text-gray-400 mb-3 ${selectionMode ? "pl-9" : ""}`}>{bug.description}</p>
-                        <div className={`flex items-center gap-3 flex-wrap ${selectionMode ? "pl-9" : ""}`}>
-                          <span className={`w-3 h-3 rounded-full ${getPriorityColor(bug.priority)}`}></span>
-                          <span className="text-sm text-gray-500 dark:text-gray-400">{bug.priority} priority</span>
-                          <span className="text-sm text-gray-400 dark:text-gray-500">
-                            {new Date(bug.createdAt).toLocaleDateString()}
-                          </span>
-                          {bug.dueDate && (
-                            <span className={`text-sm font-medium ${isOverdue(bug) ? "text-red-600 dark:text-red-400" : "text-gray-500 dark:text-gray-400"}`}>
-                              · Due: {new Date(bug.dueDate).toLocaleDateString()}{isOverdue(bug) && " (overdue)"}
-                            </span>
+            {/* Bug list */}
+            <DragDropContext onDragEnd={handleDragEnd}>
+              <Droppable droppableId="bugs" isDropDisabled={!isCustomSort || selectionMode}>
+                {(provided) => (
+                  <div
+                    className="space-y-3"
+                    ref={provided.innerRef}
+                    {...provided.droppableProps}
+                  >
+                    {paginatedBugs.map((bug, index) => {
+                      const selected = selectedIds.has(bug._id);
+                      const dueBadge = getDueDateBadge(bug);
+                      return (
+                        <Draggable
+                          key={bug._id}
+                          draggableId={bug._id}
+                          index={index}
+                          isDragDisabled={!isCustomSort || selectionMode}
+                        >
+                          {(dragProvided, dragSnapshot) => (
+                            <div
+                              ref={dragProvided.innerRef}
+                              {...dragProvided.draggableProps}
+                              className="relative group"
+                            >
+                              <a
+                                href={selectionMode ? undefined : `/bug/${bug._id}`}
+                                onClick={selectionMode ? (e) => { e.preventDefault(); toggleSelect(bug._id); } : undefined}
+                                className={`block ${selectionMode ? "cursor-pointer" : ""}`}
+                              >
+                                <div className={`bg-white dark:bg-gray-900 rounded-xl shadow p-6 transition-all
+                                  ${dragSnapshot.isDragging ? "shadow-xl ring-2 ring-blue-400 dark:ring-blue-500 rotate-1" : ""}
+                                  ${selected
+                                    ? "ring-2 ring-blue-500 dark:ring-blue-400 ring-offset-1"
+                                    : isOverdue(bug)
+                                      ? "border border-red-300 dark:border-red-700"
+                                      : "border border-transparent dark:border-gray-800"
+                                  }`}>
+                                  <div className="flex items-start justify-between mb-2 gap-3">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                      {/* Drag handle — only in custom sort mode */}
+                                      {isCustomSort && !selectionMode && (
+                                        <span
+                                          {...dragProvided.dragHandleProps}
+                                          className="shrink-0 text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 cursor-grab active:cursor-grabbing touch-none"
+                                          aria-label="Drag to reorder"
+                                        >
+                                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M7 2a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 2zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 8zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 14zm6-8a2 2 0 1 0-.001-4.001A2 2 0 0 0 13 6zm0 2a2 2 0 1 0 .001 4.001A2 2 0 0 0 13 8zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 13 14z" />
+                                          </svg>
+                                        </span>
+                                      )}
+                                      {/* Selection indicator */}
+                                      {selectionMode && (
+                                        <span className={`shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all
+                                          ${selected
+                                            ? "bg-blue-600 border-blue-600"
+                                            : "border-gray-300 dark:border-gray-500 bg-white dark:bg-gray-800"
+                                          }`}>
+                                          {selected && (
+                                            <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                            </svg>
+                                          )}
+                                        </span>
+                                      )}
+                                      <h2 className="text-xl font-semibold text-gray-900 dark:text-white truncate">{bug.title}</h2>
+                                    </div>
+                                    <span className={`shrink-0 px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(bug.status)}`}>
+                                      {bug.status}
+                                    </span>
+                                  </div>
+                                  {(bug.tags ?? []).length > 0 && (
+                                    <div className={`flex gap-1 flex-wrap mb-2 ${selectionMode || isCustomSort ? "pl-9" : ""}`}>
+                                      {bug.tags.map((tag) => (
+                                        <span key={tag} className="px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs rounded-full font-medium">
+                                          {tag}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                  <p className={`text-gray-600 dark:text-gray-400 mb-3 ${selectionMode || isCustomSort ? "pl-9" : ""}`}>{bug.description}</p>
+                                  <div className={`flex items-center gap-3 flex-wrap ${selectionMode || isCustomSort ? "pl-9" : ""}`}>
+                                    <span className={`w-3 h-3 rounded-full ${getPriorityColor(bug.priority)}`}></span>
+                                    <span className="text-sm text-gray-500 dark:text-gray-400">{bug.priority} priority</span>
+                                    <span className="text-sm text-gray-400 dark:text-gray-500">
+                                      {new Date(bug.createdAt).toLocaleDateString()}
+                                    </span>
+                                    {dueBadge && (
+                                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${dueBadge.className}`}>
+                                        {dueBadge.label}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </a>
+                            </div>
                           )}
-                        </div>
-                      </div>
-                    </a>
+                        </Draggable>
+                      );
+                    })}
+                    {provided.placeholder}
                   </div>
-                );
-              })}
-            </div>
+                )}
+              </Droppable>
+            </DragDropContext>
           </>
         )}
 
-        {totalPages > 1 && (
+        {!isCustomSort && totalPages > 1 && (
           <div className="flex items-center justify-center gap-4 mt-6">
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
