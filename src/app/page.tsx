@@ -44,7 +44,7 @@ function getDueDateBadge(bug: Bug): { label: string; className: string } | null 
   return { label: `Due ${due.toLocaleDateString()}`, className: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400" };
 }
 
-export default function Home() {
+export default function Home() {  
   const router = useRouter();
   const searchRef = useRef<HTMLInputElement>(null);
   const [bugs, setBugs] = useState<Bug[]>([]);
